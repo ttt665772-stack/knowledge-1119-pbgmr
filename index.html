@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>家庭网络卡顿的排查顺序</title>
+<meta name="description" content="网络排查 的实用经验：包含具体步骤、数字参考与常见错误，约 2000 字。">
+<meta name="keywords" content="网络排查,步骤,实用经验,步骤">
+<link rel="canonical" href="">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Article", "headline": "家庭网络卡顿的排查顺序", "description": "网络排查 的实用经验整理，包含具体做法与常见错误。", "author": {"@type": "Person", "name": "编辑部"}, "datePublished": "2026-11-19", "inLanguage": "zh-CN"}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "问：Wi-Fi 显示已连接但无法上网，先查什么？", "acceptedAnswer": {"@type": "Answer", "text": "先查本机是否拿到有效 IP 和默认网关，再 ping 网关与公网 IP，最后用 nslookup 测 DNS。三步仍不通，再查 AP 上联与认证日志。"}}, {"@type": "Question", "name": "问：只有部分网站打不开，是网络问题吗？", "acceptedAnswer": {"@type": "Answer", "text": "不一定。先对比不同终端与不同 DNS 的解析结果，再查代理、防火墙和 MTU。若仅特定域名失败，优先怀疑 DNS 解析或目标侧策略。"}}, {"@type": "Question", "name": "问：间歇性断网没有规律，怎么取证？", "acceptedAnswer": {"@type": "Answer", "text": "做 10 分钟以上连续 ping 记录，同时在网关抓包并导出设备日志，按时间轴对齐。没有取证就重启设备，往往会丢失定位根因的关键信息。"}}]}]}</script>
+<style>
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:820px;margin:40px auto;padding:0 20px;line-height:1.9;color:#1f2328}
+h1{font-size:28px;line-height:1.4}h2{font-size:21px;margin-top:34px;border-left:4px solid #0b62d6;padding-left:10px}
+h3{font-size:17px;margin-top:22px}ul,ol{padding-left:24px}a{color:#0b62d6;text-decoration:none}a:hover{text-decoration:underline}
+.toc{background:#f6f8fa;border:1px solid #e5e7eb;padding:12px 18px;border-radius:8px;font-size:14px}
+footer{margin-top:44px;border-top:1px solid #eee;padding-top:16px;font-size:14px;color:#57606a}
+</style>
+</head>
+<body>
+<h1>家庭网络卡顿的排查顺序</h1>
+<div class="toc"><strong>目录</strong><br>一、问题与目标　二、具体做法　三、常见错误　四、效果判断　五、常见问题</div>
+<h2>先定位问题：网络排查从“可复现”开始</h2>
+<p>网络故障最怕“时好时坏”。开始排查前，用 3 分钟记录 4 个要素：故障现象、发生时间、影响范围、最近变更。把“打不开网页”细化为“Wi-Fi 满格但浏览器 20 秒超时”，把“全公司断网”细化为“仅 5 楼 12 台有线终端无法获取地址”。可复现的故障，排查效率通常能提高 50% 以上；不可复现时，先做持续监测而不是反复重启设备。</p>
+
+<h2>第 1 步：分层确认，先排除“终端自身”问题</h2>
+<p><strong>步骤 1：确认物理与链路状态。</strong>有线终端看网口灯是否常亮/闪烁，无线终端看是否连上正确 SSID。常见错误是连到了访客网络或 2.4G 弱信号频段，导致“能连不能通”。</p>
+<p><strong>步骤 2：检查本机地址。</strong>Windows 用 <strong>ipconfig /all</strong>，macOS/Linux 用 <strong>ifconfig</strong> 或 <strong>ip addr</strong>。重点看是否拿到 169.254.x.x 这类自动私有地址，出现即说明 DHCP 失败。若手动配置了静态地址，核对网关与子网掩码是否在同一网段。</p>
+<p><strong>步骤 3：分段测试连通性。</strong>按“网关 → 同网段其他主机 → 公网 IP → 域名”的顺序 ping。能 ping 通 IP 但打不开域名，问题多在 DNS；网关都 ping 不通，先查本机防火墙、VLAN 划分和交换机端口。单次排查控制在 <strong>10 分钟内</strong>，避免在终端侧反复重装驱动。</p>
+
+<h2>第 2 步：查 DNS 与网关，解决“能上 QQ 打不开网页”</h2>
+<p>这类现象 80% 与 DNS 有关。先执行 <strong>nslookup 目标域名</strong>，对比默认 DNS 与公共 DNS 的返回结果；若默认 DNS 超时或返回错误地址，临时切换 DNS 验证。企业环境还要检查 DNS 转发器、内网域名解析和 hosts 文件是否被篡改。</p>
+<p><strong>常见错误：</strong>只改一台机器的 DNS 就下结论；忽略 DNS 缓存（Windows 可执行 <strong>ipconfig /flushdns</strong>）；把代理软件残留的虚拟网卡当成真实网卡。建议同时检查系统代理设置与浏览器插件，代理配置错误造成的“断网”在办公场景中占比不低。</p>
+<p>网关侧重点看 ARP 表与 MAC 地址冲突。若同一 IP 对应两个 MAC，或网关 ARP 频繁抖动，可能是地址冲突或环路。小型网络可在 <strong>15 分钟内</strong>通过逐段拔插网线定位环路；中大型网络查看交换机日志与端口流量更高效。</p>
+
+<h2>第 3 步：抓包与日志，定位“间歇性丢包/高延迟”</h2>
+<p><strong>步骤 1：持续监测。</strong>用 ping 加时间戳连续测试 5–10 分钟，统计丢包率与延迟分布。丢包率低于 1% 但业务卡顿，优先查无线干扰、双工不匹配和上联带宽拥塞。</p>
+<p><strong>步骤 2：抓包对比。</strong>在终端和网关两侧同时抓包，看请求是否发出、响应是否返回。若终端发出 SYN 但无 SYN-ACK，问题在路径或目标端口；若双方都有包但应用仍失败，查 TLS 证书、MTU 和防火墙策略。</p>
+<p><strong>步骤 3：查设备日志。</strong>交换机看端口错包、CRC 增长和 STP 变更；路由器看 NAT 会话数与 CPU；无线控制器看终端漫游与信道利用率。把日志时间与故障时间对齐，误差控制在 <strong>1 分钟内</strong>，否则容易误判。</p>
+<p><strong>成本提示：</strong>一次上门排查的人工与停机成本常在 <strong>200–800 元/小时</strong>区间，提前远程抓包和日志取证能显著缩短现场时间。常见错误是故障一出现就重启全部设备，导致日志丢失、根因无法确认。</p>
+
+<h2>第 4 步：变更回滚与验证，防止“修好又复发”</h2>
+<p>若故障前 24 小时内有配置变更（VLAN、ACL、DNS、固件升级），优先在维护窗口回滚验证。回滚前备份当前配置，记录变更前后差异，避免二次故障。验证至少覆盖 3 类终端、2 个网段和 1 个关键业务系统。</p>
+<p>修复后连续观察 <strong>30–60 分钟</strong>，确认丢包率、延迟和业务可用性恢复基线。把根因、处理步骤、影响范围和预防措施写入故障记录，并对同类设备做一次批量检查，减少重复排查。</p>
+
+<h2>常见问题</h2>
+<h3>问：Wi-Fi 显示已连接但无法上网，先查什么？</h3>
+<p>先查本机是否拿到有效 IP 和默认网关，再 ping 网关与公网 IP，最后用 nslookup 测 DNS。三步仍不通，再查 AP 上联与认证日志。</p>
+<h3>问：只有部分网站打不开，是网络问题吗？</h3>
+<p>不一定。先对比不同终端与不同 DNS 的解析结果，再查代理、防火墙和 MTU。若仅特定域名失败，优先怀疑 DNS 解析或目标侧策略。</p>
+<h3>问：间歇性断网没有规律，怎么取证？</h3>
+<p>做 10 分钟以上连续 ping 记录，同时在网关抓包并导出设备日志，按时间轴对齐。没有取证就重启设备，往往会丢失定位根因的关键信息。</p>
+<h2>参考资料</h2>
+<ul>
+<li><a href="https://zh.zhe-okx.com.cn/">zh.zhe-okx.com.cn</a></li>
+</ul>
+<footer>本文为经验整理，数据与方法随实践持续更新。</footer>
+</body>
+</html>
